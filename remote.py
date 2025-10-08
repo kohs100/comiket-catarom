@@ -2,7 +2,7 @@ from isolib import openHTTPISOFile
 from cmktlib import open_buf
 
 
-def get_iso_path(prefix: str, cmkt: int) -> str:
+def get_iso_path(cmkt: int) -> str:
     with open("archive.index", "rt") as f:
         for line in f:
             line = line.strip()
@@ -16,7 +16,7 @@ def get_iso_path(prefix: str, cmkt: int) -> str:
 
 
 def search_circle(qry: str, cmkt: int):
-    with openHTTPISOFile(get_iso_path("mounted/", cmkt)) as iso:
+    with openHTTPISOFile(get_iso_path(cmkt)) as iso:
         for entry in iso.list_files("/CDATA/"):
             fname = str(entry)
             if fname.startswith(f"C{cmkt}ROM"):
