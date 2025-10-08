@@ -1,5 +1,7 @@
-.vscode/*
-__pycache__/*
+.vscode
+__pycache__
 
-Catalogs/*
-extracted/*
+Catalogs
+extracted
+mounted
+.venv
