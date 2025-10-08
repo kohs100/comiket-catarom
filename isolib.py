@@ -2,6 +2,10 @@ import pycdlib
 from io import BytesIO
 from pathlib import Path
 
+from typing import Any, IO
+from types import TracebackType
+
+import fsspec # type: ignore
 
 class ISOEntry:
     def __init__(self, isofile: "ISOFile", filename: str, fullpath: str):
@@ -24,12 +28,12 @@ class ISOEntry:
 
         return buf
 
-
 class ISOFile:
-    def __init__(self, iso_path: Path):
-        self.iso_path = iso_path
+    def __init__(self, fp: IO[bytes]):
+        # self.iso_path = iso_path
         self.iso = pycdlib.PyCdlib()  # type: ignore
-        self.iso.open(str(iso_path), "rb")
+        # self.iso.open(str(iso_path), "rb")
+        self.iso.open_fp(fp)  # type: ignore
 
     def get_file(self, fullpath: str) -> BytesIO:
         assert fullpath.isupper(), "Please use upper-case path."
@@ -86,3 +90,50 @@ class ISOFile:
             ret.append(ISOEntry(self, filename, fullpath))
 
         return ret
+
+class OpenISOFSSpec:
+    def __init__(self, path: Path | str, *args: list[Any], **kwargs: dict[str, Any]):
+        self.path = str(path)
+        self.args = args
+        self.kwargs = kwargs
+
+        self.fp: IO[bytes] | None = None
+
+    def __enter__(self) -> "ISOFile":
+        opener = fsspec.open(self.path, *self.args, **self.kwargs)  # type: ignore
+        assert isinstance(opener, fsspec.core.OpenFile)
+
+        fp = opener.open()  # type: ignore
+        self.fp = fp
+        return ISOFile(fp) # type: ignore
+
+    def __exit__(
+        self,
+        type_: type[BaseException] | None,
+        value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool:
+        if self.fp:
+            self.fp.close()
+        return False
+
+
+class OpenISOFile:
+    def __init__(self, path: Path):
+        self.path = path
+        self.fp: None | IO[bytes] = None
+
+    def __enter__(self) -> "ISOFile":
+        fp = open(self.path, "rb")  # type: ignore
+        self.fp = fp
+        return ISOFile(fp)
+
+    def __exit__(
+        self,
+        type_: type[BaseException] | None,
+        value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> bool:
+        if self.fp:
+            self.fp.close()
+        return False
