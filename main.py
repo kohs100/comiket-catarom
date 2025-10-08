@@ -10,12 +10,6 @@ FORMATS: Dict[int, Dict[str, int | None]] = {
         "AUTHOR_NAME": 8,
         "SHINKAN_NAME": 9
     },
-    57: {
-        "CIRCLE_NAME": 7,
-        "CIRCLE_YOMI": None,
-        "AUTHOR_NAME": 8,
-        "SHINKAN_NAME": 9
-    },
     58: {
         "CIRCLE_NAME": 9,
         "CIRCLE_YOMI": None,
