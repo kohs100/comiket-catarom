@@ -3,8 +3,11 @@ import zipfile
 from pathlib import Path
 
 from util import resolve_case_insensitive
-from isolib import OpenISOFile, OpenISOFSSpec
+from isolib import openLocalISOFile
 from cmktlib import open_buf
+
+import fsspec  # type: ignore
+
 
 def get_iso_path(prefix: str, cmkt: int) -> Path:
     def resolve_file(fname: str) -> str:
@@ -46,13 +49,14 @@ def get_iso_path(prefix: str, cmkt: int) -> Path:
 
 
 def get_rom_zip(cmkt: int):
-    with OpenISOFile(get_iso_path("mounted/", cmkt)) as iso:
+    with openLocalISOFile(get_iso_path("mounted/", cmkt)) as iso:
         buf = iso.get_file(f"/C0{cmkt}CUTH.CCZ")
         with zipfile.ZipFile(buf) as zf:
             print(zf.namelist())
 
+
 def search_circle(qry: str, cmkt: int):
-    with OpenISOFSSpec(get_iso_path("mounted/", cmkt)) as iso:
+    with openLocalISOFile(get_iso_path("mounted/", cmkt)) as iso:
         for entry in iso.list_files("/CDATA/"):
             fname = str(entry)
             if fname.startswith(f"C{cmkt}ROM"):
@@ -68,7 +72,15 @@ def search_circle(qry: str, cmkt: int):
                                     f"Found {cname} in C{cmkt} Day{rom_num} - {cyomi} / {aname} / {sname}"
                                 )
 
+
 def main():
+    fs = fsspec.filesystem(  # type: ignore
+        "blockcache",
+        target_protocol="local",
+        cache_storage="./local-iso-cache",
+        same_names=True,
+    )
+
     cmkts: list[int] = list(range(56, 71)) + [73, 75, 79, 80]
 
     for cmkt in cmkts:

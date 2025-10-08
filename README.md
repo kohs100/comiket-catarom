@@ -7,7 +7,7 @@ Parse comiket cd-rom catalog and perform global search
 https://www.comiket.co.jp/cd-rom/DataFormatBackNumber.html
 
 ### CJM Format
-* ? ~ C56 ~ C61
+* C56 ~ C61
 * CDATA - Circle data in Shift-JIS (cp942)
 * JDATA - Page data in JPEG
 * MDATA - Map data

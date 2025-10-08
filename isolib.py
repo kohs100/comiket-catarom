@@ -1,11 +1,11 @@
-import pycdlib
 from io import BytesIO
 from pathlib import Path
+from contextlib import contextmanager
+from typing import IO
 
-from typing import Any, IO
-from types import TracebackType
+import pycdlib
+import fsspec  # type: ignore
 
-import fsspec # type: ignore
 
 class ISOEntry:
     def __init__(self, isofile: "ISOFile", filename: str, fullpath: str):
@@ -28,16 +28,18 @@ class ISOEntry:
 
         return buf
 
+
 class ISOFile:
     def __init__(self, fp: IO[bytes]):
+        assert fp.seekable(), "File is not seekable!!"
         # self.iso_path = iso_path
         self.iso = pycdlib.PyCdlib()  # type: ignore
         # self.iso.open(str(iso_path), "rb")
         self.iso.open_fp(fp)  # type: ignore
 
     def get_file(self, fullpath: str) -> BytesIO:
-        assert fullpath.isupper(), "Please use upper-case path."
-        assert fullpath.startswith("/")
+        assert fullpath.startswith("/"), "Please use absolute path."
+        assert fullpath == fullpath.upper(), "Please use upper-case path."
 
         basedir, filename = fullpath.rsplit("/", -1)
 
@@ -91,49 +93,26 @@ class ISOFile:
 
         return ret
 
-class OpenISOFSSpec:
-    def __init__(self, path: Path | str, *args: list[Any], **kwargs: dict[str, Any]):
-        self.path = str(path)
-        self.args = args
-        self.kwargs = kwargs
 
-        self.fp: IO[bytes] | None = None
+@contextmanager
+def openHTTPISOFile(
+    uri: str, cache_path: str = "./iso_cache", block_size: int = 1 << 20
+):
+    assert uri.startswith("http://") or uri.startswith("https://")
 
-    def __enter__(self) -> "ISOFile":
-        opener = fsspec.open(self.path, *self.args, **self.kwargs)  # type: ignore
-        assert isinstance(opener, fsspec.core.OpenFile)
+    fs = fsspec.filesystem(  # type: ignore
+        "blockcache",
+        target_protocol="http",
+        cache_storage=cache_path,
+        same_names=True,
+        block_size=block_size,
+    )
 
-        fp = opener.open()  # type: ignore
-        self.fp = fp
-        return ISOFile(fp) # type: ignore
-
-    def __exit__(
-        self,
-        type_: type[BaseException] | None,
-        value: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> bool:
-        if self.fp:
-            self.fp.close()
-        return False
+    with fs.open(uri, "rb", block_size=block_size) as f:
+        yield ISOFile(f)
 
 
-class OpenISOFile:
-    def __init__(self, path: Path):
-        self.path = path
-        self.fp: None | IO[bytes] = None
-
-    def __enter__(self) -> "ISOFile":
-        fp = open(self.path, "rb")  # type: ignore
-        self.fp = fp
-        return ISOFile(fp)
-
-    def __exit__(
-        self,
-        type_: type[BaseException] | None,
-        value: BaseException | None,
-        traceback: TracebackType | None,
-    ) -> bool:
-        if self.fp:
-            self.fp.close()
-        return False
+@contextmanager
+def openLocalISOFile(path: str | Path):
+    with open(path, "rb") as f:
+        yield ISOFile(f)
