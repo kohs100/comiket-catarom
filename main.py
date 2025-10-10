@@ -1,15 +1,25 @@
-import zipfile
-
 from pathlib import Path
 
-from util import resolve_case_insensitive
-from isolib import openLocalISOFile
-from cmktlib import open_buf
-
+# import zipfile
 import fsspec  # type: ignore
 
+from util import resolve_case_insensitive
+from isolib import openLocalISOFile, openHTTPISOFile
+from cmktlib import open_buf
 
-def get_iso_path(prefix: str, cmkt: int) -> Path:
+def get_iso_path_ia(cmkt: int) -> str:
+    with open("archive.index", "rt") as f:
+        for line in f:
+            line = line.strip()
+            if len(line) == 0:
+                continue
+            i, path = line.split(":", 1)
+
+            if int(i) == cmkt:
+                return path
+        raise KeyError(f"cmkt {cmkt} not found in index file")
+
+def get_iso_path_local(prefix: str, cmkt: int) -> Path:
     def resolve_file(fname: str) -> str:
         if fname == "-":
             return f"CCC{cmkt}.iso"
@@ -48,15 +58,15 @@ def get_iso_path(prefix: str, cmkt: int) -> Path:
             raise KeyError(f"cmkt {cmkt} not found in index file")
 
 
-def get_rom_zip(cmkt: int):
-    with openLocalISOFile(get_iso_path("mounted/", cmkt)) as iso:
-        buf = iso.get_file(f"/C0{cmkt}CUTH.CCZ")
-        with zipfile.ZipFile(buf) as zf:
-            print(zf.namelist())
+# def get_rom_zip(cmkt: int):
+#     with openLocalISOFile(get_iso_path("mounted/", cmkt)) as iso:
+#         buf = iso.get_file(f"/C0{cmkt}CUTH.CCZ")
+#         with zipfile.ZipFile(buf) as zf:
+#             print(zf.namelist())
 
 
-def search_circle(qry: str, cmkt: int):
-    with openLocalISOFile(get_iso_path("mounted/", cmkt)) as iso:
+def search_circle_local(qry: str, cmkt: int):
+    with openLocalISOFile(get_iso_path_local("mounted/", cmkt)) as iso:
         for entry in iso.list_files("/CDATA/"):
             fname = str(entry)
             if fname.startswith(f"C{cmkt}ROM"):
@@ -72,20 +82,29 @@ def search_circle(qry: str, cmkt: int):
                                     f"Found {cname} in C{cmkt} Day{rom_num} - {cyomi} / {aname} / {sname}"
                                 )
 
+def search_circle_ia(qry: str, cmkt: int):
+    with openHTTPISOFile(get_iso_path_ia(cmkt)) as iso:
+        for entry in iso.list_files("/CDATA/"):
+            fname = str(entry)
+            if fname.startswith(f"C{cmkt}ROM"):
+                rom_num_str = fname[6]
+                if rom_num_str.isdigit():
+                    rom_num = int(rom_num_str)
+                    if 0 < rom_num:
+                        data = open_buf(cmkt, entry.get_buffer())
+                        for cname, cyomi, aname, sname in data:
+                            assert cname is not None
+                            if qry in cname:
+                                print(
+                                    f"Found {cname} in C{cmkt} Day{rom_num} - {cyomi} / {aname} / {sname}"
+                                )
 
 def main():
-    fs = fsspec.filesystem(  # type: ignore
-        "blockcache",
-        target_protocol="local",
-        cache_storage="./local-iso-cache",
-        same_names=True,
-    )
-
-    cmkts: list[int] = list(range(56, 71)) + [73, 75, 79, 80]
+    cmkts: list[int] = list(range(56, 74)) + [75, 80]
 
     for cmkt in cmkts:
         print(f" --- C{cmkt} --- ")
-        search_circle("たそもれら", cmkt)
+        search_circle_ia("たそもれら", cmkt)
 
 
 if __name__ == "__main__":
