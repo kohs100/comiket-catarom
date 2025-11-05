@@ -1,10 +1,9 @@
 from pathlib import Path
 
 # import zipfile
-import fsspec  # type: ignore
 
 from util import resolve_case_insensitive
-from isolib import openLocalISOFile, openHTTPISOFile
+from isolib import openLocalISOFile, openHTTPISOFile, ISOFile
 from cmktlib import open_buf
 
 def get_iso_path_ia(cmkt: int) -> str:
@@ -64,47 +63,42 @@ def get_iso_path_local(prefix: str, cmkt: int) -> Path:
 #         with zipfile.ZipFile(buf) as zf:
 #             print(zf.namelist())
 
+def search(iso: ISOFile, qry: str, cmkt: int):
+    CDATA_PATH="/CDATA/" if cmkt < 81 else f"/DATA{cmkt}/CDATA/"
+    for entry in iso.list_files(CDATA_PATH):
+        fname = str(entry)
+        if fname.startswith(f"C{cmkt}ROM"):
+            rom_num_str = fname[6]
+            if rom_num_str.isdigit():
+                rom_num = int(rom_num_str)
+                if 0 < rom_num:
+                    data = open_buf(cmkt, entry.get_buffer())
+                    for cname, cyomi, aname, sname in data:
+                        assert cname is not None
+                        if qry in cname or (aname is not None and qry in aname):
+                            print(
+                                f"Found {cname} in C{cmkt} Day{rom_num} - {cyomi} / {aname} / {sname}"
+                            )
 
 def search_circle_local(qry: str, cmkt: int):
-    with openLocalISOFile(get_iso_path_local("mounted/", cmkt)) as iso:
-        for entry in iso.list_files("/CDATA/"):
-            fname = str(entry)
-            if fname.startswith(f"C{cmkt}ROM"):
-                rom_num_str = fname[6]
-                if rom_num_str.isdigit():
-                    rom_num = int(rom_num_str)
-                    if 0 < rom_num:
-                        data = open_buf(cmkt, entry.get_buffer())
-                        for cname, cyomi, aname, sname in data:
-                            assert cname is not None
-                            if qry in cname:
-                                print(
-                                    f"Found {cname} in C{cmkt} Day{rom_num} - {cyomi} / {aname} / {sname}"
-                                )
+    iso_path = get_iso_path_local("mounted/", cmkt)
+    # print("Opening ISO: ", iso_path)
+    with openLocalISOFile(iso_path) as iso:
+        search(iso, qry, cmkt)
 
 def search_circle_ia(qry: str, cmkt: int):
     with openHTTPISOFile(get_iso_path_ia(cmkt)) as iso:
-        for entry in iso.list_files("/CDATA/"):
-            fname = str(entry)
-            if fname.startswith(f"C{cmkt}ROM"):
-                rom_num_str = fname[6]
-                if rom_num_str.isdigit():
-                    rom_num = int(rom_num_str)
-                    if 0 < rom_num:
-                        data = open_buf(cmkt, entry.get_buffer())
-                        for cname, cyomi, aname, sname in data:
-                            assert cname is not None
-                            if qry in cname:
-                                print(
-                                    f"Found {cname} in C{cmkt} Day{rom_num} - {cyomi} / {aname} / {sname}"
-                                )
+        search(iso, qry, cmkt)
+
 
 def main():
-    cmkts: list[int] = list(range(56, 74)) + [75, 80]
+    # cmkts: list[int] = list(range(56, 74)) + [75, 80]
+    cmkts = list(range(56, 74)) + [75, 76, 77] + list(range(79, 83))
 
     for cmkt in cmkts:
         print(f" --- C{cmkt} --- ")
         search_circle_ia("たそもれら", cmkt)
+        # search_circle_local("和泉つばす", cmkt)
 
 
 if __name__ == "__main__":

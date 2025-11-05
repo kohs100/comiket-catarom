@@ -28,7 +28,7 @@ https://www.comiket.co.jp/cd-rom/DataFormatBackNumber.html
 * UDATA - Circle data in Unicode(UTF-16 BE)
 
 ### CMPU Format
-* C65 ~ C75 ~ ?
+* C65 ~ C77 ~ ?
 * CDATA - Circle data in Shift-JIS (cp942)
 * MDATA - Map data
 * PDATA - Page data in PNG
@@ -43,6 +43,6 @@ https://www.comiket.co.jp/cd-rom/DataFormatBackNumber.html
 * Lores circel cut data in C0XXCUTL.CCZ (zip format)
 
 ### DVD Format
-* ? ~ C82
+* C81 ~ C82
 * Follows CMPU Format in DATA82 directory
 * Also there is CCZ format circle cut data in DATA82N/C0XXCUTX.CCZ

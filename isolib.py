@@ -32,9 +32,7 @@ class ISOEntry:
 class ISOFile:
     def __init__(self, fp: IO[bytes]):
         assert fp.seekable(), "File is not seekable!!"
-        # self.iso_path = iso_path
         self.iso = pycdlib.PyCdlib()  # type: ignore
-        # self.iso.open(str(iso_path), "rb")
         self.iso.open_fp(fp)  # type: ignore
 
     def get_file(self, fullpath: str) -> BytesIO:
@@ -96,10 +94,10 @@ class ISOFile:
 
 @contextmanager
 def openHTTPISOFile(
-    uri: str, cache_path: str = "./iso_cache", block_size: int = 1 << 20
+    uri: str,
+    cache_path: str = "./iso_cache",
+    block_size: int = 1 << 20,
 ):
-    assert uri.startswith("http://") or uri.startswith("https://")
-
     fs = fsspec.filesystem(  # type: ignore
         "blockcache",
         target_protocol="http",
